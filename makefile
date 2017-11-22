@@ -34,7 +34,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
 
 # Targets
 
-all: radio_test simtec_test
+all: radio_test simsec_test
 
 radio_test: $(OBJDIR)/radio_test.o $(RAD_OBJS)
 	gcc -o $@ $^ $(CFLAGS) $(LIBS)
