@@ -23,34 +23,28 @@ int radio_init(int addr) {
 	bzero((char *) &sa, sizeof(sa));
     // Check validity of address
 
-	if(!(addr >= 1024 && addr<=32767))
+	if(!(addr >= 1024 && addr<=0xFFFF))
 	{
+    perror("The address wasn't valid.");
 		return ERR_INVAL;
 	}
   // Create UDP socket
 	if((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
 	{
+    perror("Failed to create UDP socket.");
 		return ERR_FAILED;
 	}
-  // struct timeval timeout;
-  // timeout.tv_sec = 10;
-  // timeout.tv_usec = 0;
-  // if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0)
-  // {
-  //     return ERR_FAILED;
-  // }
+
     // Prepare address structure
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(addr);
 	//sa.sin_addr.s_addr = htonl(addr);
-	sa.sin_addr.s_addr = INADDR_ANY;
+	sa.sin_addr.s_addr = htonl(INADDR_ANY);
 
-	printf("%d\n", addr);
-	printf("%d\n", sa.sin_port);
-	printf("%d\n", sa.sin_addr.s_addr);
     // Bind socket to port
 	if(bind(sock, (struct sockaddr *) &sa, sizeof(sa)) == -1)
 	{
+    perror("Failed to bind socket to port.");
 		return ERR_FAILED;
 	}
     return ERR_OK;
@@ -60,24 +54,37 @@ int radio_send(int  dst, char* data, int len) {
 
     struct sockaddr_in sa;   // Structure to hold destination address
 	bzero((char *) &sa, sizeof(sa));
+
     // Check that port and len are valid
-	if(!(dst >= 1024 && dst<=32767) && len >= 0 && len <= 72)
+	if(!(dst >= 1024 && dst<=0xFFFF) && len >= 0 && len <= FRAME_PAYLOAD_SIZE)
 	{
+    perror("The port and length wasn't valid.");
 		return ERR_INVAL;
 	}
+
     // Emulate transmission time
 	sleep((8*len)/19200);
+
     // Prepare address structure
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(dst);
-	//sa.sin_addr.s_addr = htonl(dst);
-	sa.sin_addr.s_addr = INADDR_ANY;
+	sa.sin_addr.s_addr = htonl(INADDR_ANY);
+
     // Send the message
-	if (sendto(sock, data, sizeof(data)/sizeof(data[0]) , 0 , (struct sockaddr *) &sa, sizeof(sa))==-1)
+  int sentLength = sendto(sock, data, len+1, 0 , (struct sockaddr *) &sa, sizeof(sa));
+	if (sentLength ==-1)
 	{
+    perror("The message wasn't sent.");
 		return ERR_FAILED;
 	}
-    // Check if fully sent
+
+  // Check if fully sent
+  if(sentLength != len+1)
+  {
+    perror("The message wasn't complete.");
+    return ERR_FAILED;
+  }
+
 
     return ERR_OK;
 }
@@ -87,7 +94,6 @@ int radio_recv(int* src, char* data, int to_ms) {
     struct sockaddr_in sa; // Structure to receive source address
     socklen_t addrlen = sizeof(sa);
     struct pollfd ufds;
-    int len = sizeof(data)/sizeof(data[0]);            // Size of received packet (or error code)
 
     // First poll/select with timeout (may be skipped at first)
     int err;
@@ -95,23 +101,28 @@ int radio_recv(int* src, char* data, int to_ms) {
     {
       if(err < 0)
       {
+        perror("The poll failed.");
         return ERR_FAILED;
       }
+      perror("Poll timeout.");
       return ERR_TIMEOUT;
     }
+    
     // Then get the packet
 
-    if(recvfrom(sock, data, len, 0, (struct sockaddr *) &sa, &addrlen) == -1)
-    {
-       return ERR_FAILED;
-    }
     // Zero out the address structure
-	   //bzero((char *) &sa, sizeof(sa));
+    memset((char *) &sa,0, sizeof(sa));
 
     // Receive data
+    int recLength = recvfrom(sock, data, FRAME_PAYLOAD_SIZE, 0, (struct sockaddr *) &sa, &addrlen);
+    if(recLength == -1)
+    {
+      perror("The data wasn't received.");
+       return ERR_FAILED;
+    }
 
     // Set source from address structure
-    // *src = ntohs(sa.sin_port);
+    *src = ntohs(sa.sin_port);
 
-    return len;
+    return recLength;
 }
