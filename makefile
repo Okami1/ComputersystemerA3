@@ -46,7 +46,7 @@ simsec_test: $(OBJDIR)/simsec_test.o $(SIMSEC_OBJS)
 .PHONY: clean clean-targets
 
 clean:
-	rm -f $(OBJDIR)/*.o $(SRCDIR)/*~ core $(INCDIR)/*~ *~ *.exe *.exec
+	rm -f $(OBJDIR)/*.o $(SRCDIR)/*~ core $(INCDIR)/*~ *~ *.exe radio_test simsec_test
 
 clean-targets:
 	rm -f radio_test simsec_test
