@@ -20,7 +20,7 @@ DEPS = $(patsubst %,$(INCDIR)/%,$(_DEPS))
 # List implementation object files here
 
 # For radio layer
-_RAD_OBJS = radio.o 
+_RAD_OBJS = radio.o
 RAD_OBJS = $(patsubst %,$(OBJDIR)/%,$(_RAD_OBJS))
 
 # For SimSec protocol layer
@@ -46,7 +46,7 @@ simsec_test: $(OBJDIR)/simsec_test.o $(SIMSEC_OBJS)
 .PHONY: clean clean-targets
 
 clean:
-	rm -f $(OBJDIR)/*.o $(SRCDIR)/*~ core $(INCDIR)/*~ *~
+	rm -f $(OBJDIR)/*.o $(SRCDIR)/*~ core $(INCDIR)/*~ *~ *.exe *.exec
 
 clean-targets:
 	rm -f radio_test simsec_test
