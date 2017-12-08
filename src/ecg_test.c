@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
 
 #define SEND_TIMEOUT_SEC        5
@@ -25,7 +26,7 @@
 int is_sender = 0;
 int snd_addr = 2132;
 int rcv_addr = 2135;
-int sendCount = 1;
+int sendLoop = 0;
 int * address;
 
 void read_args(int argc, char * argv[]) {
@@ -42,8 +43,8 @@ void read_args(int argc, char * argv[]) {
             rcv_addr = atoi(argv[++i]);
             continue;
         }
-        if(strcmp(argv[i], "-c") == 0 && i < argc - 1){
-            sendCount = atoi(argv[++i]);
+        if(strcmp(argv[i], "-t") == 0){
+            sendLoop = 1;
             continue;
         }
         printf("Unknown option %s\n", argv[i]);
@@ -91,6 +92,47 @@ int sender() {
     return 0;
 }
 
+int senderLoop() {
+    int err, last;
+
+    char msg[SEND_BUF_SIZE];
+
+    printf("Acting as sender with address %d sending to %d\n", snd_addr, rcv_addr);
+    printf("%s\n", "This sender will conitnue to send messages until canceled by CTRL+C");
+    if ( (err=ecg_init(snd_addr)) != ERR_OK) {
+        printf("Protocol could not be initialized: %d\n", err);
+        return 1;
+    }
+
+    printf("Protocol node initialized\n");
+
+    while (1) {
+
+        // Get next message from console
+        //printf("Enter message: ");
+        strcpy(msg,"This is a test message, press CTRL+C to cancel");
+        last = strlen(msg) - 1;
+        if (msg[last] == '\n') { msg[last] = '\0'; }  // Drop ending newline
+
+        // Send it reliably
+        err = ecg_send(rcv_addr, msg, strlen(msg), SEND_TIMEOUT_SEC * 1000);
+
+        if (err != ERR_OK && err != ERR_TIMEOUT) {
+            printf("ecg_send failed with %d\n", err);
+            continue;
+        }
+
+        if (err == ERR_TIMEOUT) {
+            printf("... timed out\n");
+            continue;
+        }
+
+        printf("Reliably sent: %s\n", msg);
+        usleep(100000);
+    }
+
+    return 0;
+}
 
 int receiver() {
     int err, len, source;
@@ -126,20 +168,12 @@ int receiver() {
     return 1;
 
 }
-void *newSender(void* addr)
-{
-  int *x_ptr = (int *)addr;
-  sender((*x_ptr));
-  return NULL;
-
-}
-
 
 int main(int argc, char * argv[]) {
 
     read_args(argc, argv);
 
 
-    return is_sender ? sender() : receiver();
+    return sendLoop ? senderLoop() : (is_sender ? sender() : receiver());
 
 }
