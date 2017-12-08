@@ -58,7 +58,7 @@ typedef union {
 #define DATA_PAYLOAD_SIZE (FRAME_PAYLOAD_SIZE - sizeof(data_pdu_t)-1)
 
 int fingerprint(char * str, int key) {
-    char sum = 0;
+    char sum = strlen(str);
     char * s;
     for (s = str; *s != 0; s++ ){ sum ^= *s; }
     return ((int) sum) ^ key;
@@ -150,9 +150,10 @@ int ecg_send(int dst, char* packet, int len, int to_ms)
         strncpy(buf.data.str, msg, DATA_PAYLOAD_SIZE);
         buf.pdu_type.tag = DATA;
         char senMsg[strlen(buf.data.str)];
+        memset(senMsg, 0, strlen(buf.data.str));
         strcpy(senMsg, buf.data.str);
-        buf.data.seal = fingerprint(senMsg, KEY1);
-
+        buf.data.seal = fingerprint(buf.data.str, KEY1);
+        done = 0;
 
 
         if((err = radio_send(dst, buf.raw, sizeof(data_pdu_t)+strlen(buf.data.str))) == -1)
@@ -160,38 +161,42 @@ int ecg_send(int dst, char* packet, int len, int to_ms)
             perror("Something went wrong.");
             return ERR_FAILED;
         }
-        memset((char *)&buf, 0, sizeof(buf));
-        time_left = alarm_rem(&timer1);
-        if (time_left > RTT_MS) { time_left = RTT_MS; }
-        err = radio_recv(&src, buf.raw, time_left);
-        if (err>=ERR_OK) {
-
-            // Somehting received -- check if expected acknowledgement
-            if (err < sizeof(ack_pdu_t) || buf.pdu_type.tag != ACK) {
-                // Not an ACK packet -- ignore
-                printf("Non-ACK packet with length %d received\n", err);
-                continue;
-            }
-
-            // Check sender
-            if (src != dst) {
-                printf("Wrong sender: %d\n", src);
-                continue;
-            };
-
-            // Check fingerprint
-            if (buf.ack.seal != fingerprint(senMsg, KEY2)) {
-                printf("Wrong fingerprint: 0x%08x\n", buf.ack.seal);
-                continue;
-            };
-
-        }
-        else if(err==ERR_TIMEOUT)
+        while(!done && !alarm_expired(&timer1))
         {
-          continue;
+          memset((char *)&buf, 0, sizeof(buf));
+          time_left = alarm_rem(&timer1);
+          if (time_left > RTT_MS) { time_left = RTT_MS; }
+          err = radio_recv(&src, buf.raw, time_left);
+          if (err>=ERR_OK) {
+
+              // Somehting received -- check if expected acknowledgement
+              if (err < sizeof(ack_pdu_t) || buf.pdu_type.tag != ACK) {
+                  // Not an ACK packet -- ignore
+                  printf("Non-ACK packet with length %d received\n", err);
+                  continue;
+              }
+
+              // Check sender
+              if (src != dst) {
+                  printf("Wrong sender: %d\n", src);
+                  continue;
+              };
+
+              // Check fingerprint
+              if (buf.ack.seal != fingerprint(senMsg, KEY2)) {
+                  printf("Wrong fingerprint: 0x%08x\n", buf.ack.seal);
+                  continue;
+              };
+
+          }
+          else if(err==ERR_TIMEOUT)
+          {
+            break;
+          }
+          count--;
+          strcpy(msg, msg+DATA_PAYLOAD_SIZE);
+          done = 1;
         }
-        count--;
-        strcpy(msg, msg+DATA_PAYLOAD_SIZE);
     }
 
 
@@ -207,7 +212,8 @@ int ecg_recv(int* src, char* packet, int len, int to_ms)
     pdu_frame_t buf;
     int err;
     char msg[80];
-    int count, time_left;
+    int count, time_left, lastPrint, haveDoneThis;
+    haveDoneThis = 0;
     alarm_t timer1;
     alarm_init(&timer1);
     memset((char *)packet, 0, sizeof(packet));
@@ -257,26 +263,38 @@ int ecg_recv(int* src, char* packet, int len, int to_ms)
                             printf("Length mismatch: %d\n", err);
                             continue;
                         }
-
                         if (buf.data.seal != fingerprint(buf.data.str, KEY1)) {
                             printf("Wrong fingerprint: 0x%08x\n", buf.data.seal);
                             continue;
                         };
                         char msg[strlen(buf.data.str)];
+                        memset(msg, 0, strlen(buf.data.str));
                         strcpy(msg, buf.data.str);
-                        strcat(packet, buf.data.str);
+                        if(fingerprint(msg,KEY1) == lastPrint)
+                        {
+                            count++;
+
+                        }
+                        else
+                        {
+                          lastPrint = fingerprint(msg,KEY1);
+                          strcat(packet, msg);
+                        
+                        }
                         memset((char *)&buf, 0, sizeof(buf));
                         buf.ack.seal = fingerprint(msg, KEY2);
                         buf.pdu_type.tag = ACK;
-
                         // Send acknowledgement to sender
-                        if ( (err=radio_send(*src, buf.raw, sizeof(ack_pdu_t))) != ERR_OK) {
-                            printf("radio_send failed with %d\n", err);
-                            return ERR_FAILED;
-                        }
-                        printf("Received message from %d: %s\n", *src, msg);
-                        memset(&msg, 0, sizeof(msg));
-                        count--;
+
+                            if ( (err=radio_send(*src, buf.raw, sizeof(ack_pdu_t))) != ERR_OK)
+                             {
+                                printf("radio_send failed with %d\n", err);
+                                return ERR_FAILED;
+                            }
+                            printf("Received message from %d: %s\n", *src, msg);
+                            memset(&msg, 0, sizeof(msg));
+                            count--;
+
                       }
                       else if(err == ERR_TIMEOUT)
                       {
