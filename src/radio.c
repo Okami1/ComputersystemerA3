@@ -5,7 +5,7 @@
  */
 
 // Implements
-#include "radio.h"
+#include "../inc/radio.h"
 
 // Uses
 #include <sys/socket.h>
@@ -14,7 +14,10 @@
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <string.h>
+#include <limits.h>
 #include <unistd.h>
+
+#define BAUD_RATE 19200
 
 int sock;    // UDP Socket used by this node
 
@@ -63,7 +66,7 @@ int radio_send(int  dst, char* data, int len) {
 	}
 
     // Emulate transmission time
-	sleep((8*len)/19200);
+	usleep((INT_MAX*len)/BAUD_RATE);
 
     // Prepare address structure
 	sa.sin_family = AF_INET;
@@ -94,9 +97,11 @@ int radio_recv(int* src, char* data, int to_ms) {
     struct sockaddr_in sa; // Structure to receive source address
     socklen_t addrlen = sizeof(sa);
     struct pollfd ufds;
-
+    ufds.fd = sock;
+    ufds.events = POLLIN;
     // First poll/select with timeout (may be skipped at first)
     int err;
+
     if((err = poll(&ufds, 1, to_ms)) < 1)
     {
       if(err < 0)
@@ -107,7 +112,7 @@ int radio_recv(int* src, char* data, int to_ms) {
       perror("Poll timeout.");
       return ERR_TIMEOUT;
     }
-    
+
     // Then get the packet
 
     // Zero out the address structure
@@ -123,6 +128,8 @@ int radio_recv(int* src, char* data, int to_ms) {
 
     // Set source from address structure
     *src = ntohs(sa.sin_port);
+
+    //printf("Received length: %d\n", recLength);
 
     return recLength;
 }

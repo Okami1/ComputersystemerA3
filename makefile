@@ -27,6 +27,10 @@ RAD_OBJS = $(patsubst %,$(OBJDIR)/%,$(_RAD_OBJS))
 _SIMSEC_OBJS = simsec.o alarm.o
 SIMSEC_OBJS = $(patsubst %,$(OBJDIR)/%,$(_SIMSEC_OBJS)) $(RAD_OBJS)
 
+_ECG_OBJS = ecg.o alarm.o
+ECG_OBJS = $(patsubst %,$(OBJDIR)/%,$(_ECG_OBJS)) $(RAD_OBJS)
+
+
 # Rules
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
@@ -34,7 +38,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
 
 # Targets
 
-all: radio_test simsec_test
+all: radio_test simsec_test ecg_test
 
 radio_test: $(OBJDIR)/radio_test.o $(RAD_OBJS)
 	gcc -o $@ $^ $(CFLAGS) $(LIBS)
@@ -42,11 +46,13 @@ radio_test: $(OBJDIR)/radio_test.o $(RAD_OBJS)
 simsec_test: $(OBJDIR)/simsec_test.o $(SIMSEC_OBJS)
 	gcc -o $@ $^ $(CFLAGS) $(LIBS)
 
+ecg_test: $(OBJDIR)/ecg_test.o $(ECG_OBJS)
+	gcc -o $@ $^ $(CFLAGS) $(LIBS)
 
 .PHONY: clean clean-targets
 
 clean:
-	rm -f $(OBJDIR)/*.o $(SRCDIR)/*~ core $(INCDIR)/*~ *~ *.exe radio_test simsec_test
+	rm -f $(OBJDIR)/*.o $(SRCDIR)/*~ core $(INCDIR)/*~ *~ *.exe radio_test simsec_test ecg_test
 
 clean-targets:
-	rm -f radio_test simsec_test
+	rm -f radio_test simsec_test ecg_test

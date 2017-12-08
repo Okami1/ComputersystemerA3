@@ -60,7 +60,7 @@ int fingerprint(char * str, int key) {
     return ((int) sum) ^ key;
 }
 
-int simsec_init(int addr) { 
+int simsec_init(int addr) {
 
     return radio_init(addr);
 }
@@ -68,6 +68,7 @@ int simsec_init(int addr) {
 int simsec_send(int  dst, char* msg, int to_ms) {
 
     pdu_frame_t buf;
+
     alarm_t timer1;
     int src, time_left, err;
     int len = sizeof(data_pdu_t) + strlen(msg) + 1 ;   // +1 ~ null terminator
@@ -160,7 +161,7 @@ int simsec_receive_loop() {
 
     pdu_frame_t buf;
     int src, err;
-    char msg[80]; 
+    char msg[80];
 
     while (1) {
 
@@ -215,4 +216,3 @@ int simsec_receive_loop() {
 
     }
 }
-
