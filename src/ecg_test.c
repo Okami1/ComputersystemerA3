@@ -27,6 +27,7 @@ int is_sender = 0;
 int snd_addr = 2132;
 int rcv_addr = 2135;
 int sendLoop = 0;
+int longMessage = 0;
 int * address;
 
 void read_args(int argc, char * argv[]) {
@@ -45,6 +46,11 @@ void read_args(int argc, char * argv[]) {
         }
         if(strcmp(argv[i], "-t") == 0){
             sendLoop = 1;
+            continue;
+        }
+        if(strcmp(argv[i], "-tl") == 0){
+            sendLoop = 1;
+            longMessage = 1;
             continue;
         }
         printf("Unknown option %s\n", argv[i]);
@@ -96,21 +102,41 @@ int senderLoop() {
     int err, last;
 
     char msg[SEND_BUF_SIZE];
-
     printf("Acting as sender with address %d sending to %d\n", snd_addr, rcv_addr);
     printf("%s\n", "This sender will conitnue to send messages until canceled by CTRL+C");
     if ( (err=ecg_init(snd_addr)) != ERR_OK) {
         printf("Protocol could not be initialized: %d\n", err);
         return 1;
     }
-
+    //printf("%s\n", longString);
     printf("Protocol node initialized\n");
+    char longString[] = "Nulla  malesuada  porttitor  diam.  Donec  felis  erat,  congue  non,  volutpat  at,  tincidunt  tristique,libero."
+    "Vivamus viverra fermentum felis. Donec nonummy pellentesque ante. Phasellus adipiscingsemper elit."
+    "Proin fermentum massa ac quam. Sed diam turpis, molestie vitae, placerat a, molestienec, leo. Maecenas lacinia."
+    "Nam ipsum ligula, eleifend at, accumsan nec, suscipit a, ipsum. Morbiblandit ligula feugiat magna.";
 
     while (1) {
 
         // Get next message from console
         //printf("Enter message: ");
-        strcpy(msg,"This is a test message, press CTRL+C to cancel");
+        if(longMessage)
+        {
+            strncpy(msg, longString, SEND_BUF_SIZE);
+            strcpy(longString, longString+SEND_BUF_SIZE);
+            if(strlen(msg) == 0)
+            {
+              strcpy(longString,"Nulla  malesuada  porttitor  diam.  Donec  felis  erat,  congue  non,  volutpat  at,  tincidunt  tristique,libero."
+              "Vivamus viverra fermentum felis. Donec nonummy pellentesque ante. Phasellus adipiscingsemper elit."
+              "Proin fermentum massa ac quam. Sed diam turpis, molestie vitae, placerat a, molestienec, leo. Maecenas lacinia."
+              "Nam ipsum ligula, eleifend at, accumsan nec, suscipit a, ipsum. Morbiblandit ligula feugiat magna.");
+              strncpy(msg, longString, SEND_BUF_SIZE);
+              strcpy(longString, longString+SEND_BUF_SIZE);
+            }
+        }
+        else
+        {
+          strcpy(msg,"This is a test message, press CTRL+C to cancel");
+        }
         last = strlen(msg) - 1;
         if (msg[last] == '\n') { msg[last] = '\0'; }  // Drop ending newline
 

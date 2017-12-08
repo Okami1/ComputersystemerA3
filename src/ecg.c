@@ -252,7 +252,7 @@ int ecg_recv(int* src, char* packet, int len, int to_ms)
                         }
                         // Check message consistency and fingerprint
                         int expLen = sizeof(data_pdu_t) + strlen(buf.data.str)+1;
-                        printf("len = %d, explen = %d\n", err, expLen);
+                        //printf("len = %d, explen = %d\n", err, expLen);
                         if ( expLen != err) {
                             printf("Length mismatch: %d\n", err);
                             continue;
